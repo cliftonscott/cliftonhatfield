@@ -17,6 +17,33 @@
     window.addEventListener("scroll", onScroll, { passive: true });
   }
 
+  /* ── Pointer parallax on the phone (desktop, fine pointer, motion ok) ─ */
+  var phone = document.querySelector(".phone");
+  if (phone && animOK && window.matchMedia &&
+      window.matchMedia("(hover:hover) and (pointer:fine)").matches) {
+    var hero = document.querySelector(".hero") || document;
+    var tTx = 0, tTy = 0, tCx = 0, tCy = 0, tiltRaf = null;
+    var MAX_TILT = 5; // degrees
+    function tiltLoop() {
+      tCx += (tTx - tCx) * 0.12; tCy += (tTy - tCy) * 0.12;
+      phone.style.transform =
+        "perspective(1100px) rotateX(" + tCx.toFixed(2) + "deg) rotateY(" + tCy.toFixed(2) + "deg)";
+      if (Math.abs(tTx - tCx) > 0.02 || Math.abs(tTy - tCy) > 0.02) {
+        tiltRaf = window.requestAnimationFrame(tiltLoop);
+      } else { tiltRaf = null; }
+    }
+    function kick() { if (!tiltRaf) tiltRaf = window.requestAnimationFrame(tiltLoop); }
+    hero.addEventListener("mousemove", function (e) {
+      var r = phone.getBoundingClientRect();
+      var dx = (e.clientX - (r.left + r.width / 2)) / (window.innerWidth / 2);
+      var dy = (e.clientY - (r.top + r.height / 2)) / (window.innerHeight / 2);
+      tTy = Math.max(-1, Math.min(1, dx)) * MAX_TILT;   // rotateY follows cursor X
+      tTx = Math.max(-1, Math.min(1, dy)) * -MAX_TILT;  // rotateX inverted
+      kick();
+    }, { passive: true });
+    hero.addEventListener("mouseleave", function () { tTx = 0; tTy = 0; kick(); });
+  }
+
   /* ── Scroll reveals (shared IntersectionObserver) ────────────────── */
   var reveals = Array.prototype.slice.call(document.querySelectorAll(".reveal"));
   if (animOK && "IntersectionObserver" in window) {
@@ -83,10 +110,53 @@
     reserveTimer = setTimeout(reserveTextHeights, 150);
   }, { passive: true });
 
-  var CHAR_MS = 17;      // per-character typing speed
-  var REVEAL_MS = 300;   // fade/rise before typing starts
+  var CHAR_MS = 17;      // base per-character typing speed (jittered per char)
+  var REVEAL_MS = 300;   // fade/rise before the typing indicator
+  var COMPOSE_MS = 750;  // "typing…" indicator dwell before text appears
   var GAP_MS = 520;      // pause between posts
   var HOLD_MS = 8000;    // pause on a completed thread before looping
+  var FADE_MS = 480;     // feed fade-out before the thread loops
+
+  // Build a per-character reveal schedule with organic cadence: each character
+  // gets a jittered delay, with extra pauses after sentence/clause punctuation —
+  // so the typewriter reads like someone composing, not a metronome. Rebuilt per
+  // post each cycle for fresh variation.
+  function buildSchedule(text) {
+    var arr = [], t = 0;
+    for (var c = 0; c < text.length; c++) {
+      t += CHAR_MS * (0.75 + Math.random() * 0.55);
+      arr.push(t);
+      var ch = text.charAt(c);
+      if (ch === "." || ch === "!" || ch === "?") t += 230;
+      else if (ch === "," || ch === ";" || ch === ":") t += 120;
+      else if (ch === "—" || ch === "–") t += 150; // em / en dash
+    }
+    return arr;
+  }
+  var schedules = posts.map(function () { return null; });
+
+  // Inject a "typing…" dots indicator into each post (JS-only, so the no-JS /
+  // reduced-motion baseline never shows it). Visible only while .composing.
+  var typingDots = postTexts.map(function (box) {
+    if (!box) return null;
+    var d = document.createElement("span");
+    d.className = "typing-dots";
+    d.setAttribute("aria-hidden", "true");
+    d.innerHTML = "<i></i><i></i><i></i>";
+    box.appendChild(d);
+    return d;
+  });
+
+  // Soft coral glow behind the wordmark — give it a gentle pulse when a new post
+  // lands, tying the hero and the live feed together.
+  var glow = document.querySelector(".hero-glow");
+  function pulseGlow() {
+    if (glow && glow.animate) glow.animate(
+      [{ filter: "blur(8px) brightness(1)", transform: "scale(1)" },
+       { filter: "blur(8px) brightness(1.4)", transform: "scale(1.05)" },
+       { filter: "blur(8px) brightness(1)", transform: "scale(1)" }],
+      { duration: 1100, easing: "ease-out" });
+  }
 
   /* ── Live engagement counters ────────────────────────────────────── */
   // Once a post finishes typing it goes "live": its like/repost counts tick up
@@ -183,7 +253,7 @@
     talkClock += dt;
     for (var i = 0; i < posts.length; i++) {
       if (!frames[i]) continue;
-      if (state.idx === i && state.phase === "typing") {           // composing
+      if (state.idx === i && (state.phase === "typing" || state.phase === "compose")) { // composing
         setFrame(i, Math.floor(talkClock / TALK_MS) % 2 ? frames[i].talk : frames[i].idle);
       } else if (liveMs[i] >= 0) {                                  // posted: blink
         if (blinkEnd[i] >= 0) {
@@ -201,15 +271,16 @@
   }
 
   function renderStatic() {
-    feed.classList.remove("feed-anim");
-    posts.forEach(function (p) { p.classList.add("show"); p.classList.remove("is-typing"); });
+    feed.classList.remove("feed-anim", "feed-out");
+    posts.forEach(function (p) { p.classList.add("show"); p.classList.remove("is-typing", "composing"); });
     typed.forEach(function (el, i) { if (el) el.textContent = fullText[i]; });
     resetActivity();
   }
 
   function resetFeed() {
-    posts.forEach(function (p) { p.classList.remove("show", "is-typing"); });
+    posts.forEach(function (p) { p.classList.remove("show", "is-typing", "composing"); });
     typed.forEach(function (el) { if (el) el.textContent = ""; });
+    feed.classList.remove("feed-out");
     scrollTarget = 0;
     feed.scrollTop = 0; // snap to top instantly so replay never starts mid-scroll
     resetActivity();
@@ -242,8 +313,10 @@
 
   function startPost(i) {
     state.idx = i; state.phase = "reveal"; state.timer = 0; state.chars = 0;
+    schedules[i] = buildSchedule(fullText[i]);
     posts[i].classList.add("show", "is-typing");
     scrollToActive(i);
+    pulseGlow();
   }
 
   function step(dt) {
@@ -252,11 +325,15 @@
     state.timer += dt;
 
     if (state.phase === "reveal") {
-      if (state.timer >= REVEAL_MS) { state.phase = "typing"; state.timer = 0; }
+      // After the row rises in, show the "typing…" indicator while the agent "composes".
+      if (state.timer >= REVEAL_MS) { posts[i].classList.add("composing"); state.phase = "compose"; state.timer = 0; }
+    } else if (state.phase === "compose") {
+      if (state.timer >= COMPOSE_MS) { posts[i].classList.remove("composing"); state.phase = "typing"; state.timer = 0; }
     } else if (state.phase === "typing") {
       var el = typed[i];
       if (!el) { posts[i].classList.remove("is-typing"); startActivity(i); state.phase = "gap"; state.timer = 0; return; }
-      var target = Math.min(fullText[i].length, Math.floor(state.timer / CHAR_MS));
+      var sched = schedules[i], target = state.chars;
+      while (target < sched.length && sched[target] <= state.timer) target++;
       if (target > state.chars) { el.textContent = fullText[i].slice(0, target); state.chars = target; }
       if (state.chars >= fullText[i].length) {
         posts[i].classList.remove("is-typing");
@@ -269,7 +346,10 @@
         else { state.phase = "hold"; state.timer = 0; }
       }
     } else if (state.phase === "hold") {
-      if (state.timer >= HOLD_MS) { resetFeed(); state.idx = -1; state.phase = "idle"; state.timer = 0; }
+      // Fade the whole thread out before looping (also masks the scroll reset).
+      if (state.timer >= HOLD_MS) { feed.classList.add("feed-out"); state.phase = "fadeout"; state.timer = 0; }
+    } else if (state.phase === "fadeout") {
+      if (state.timer >= FADE_MS) { resetFeed(); state.idx = -1; state.phase = "idle"; state.timer = 0; }
     }
   }
 

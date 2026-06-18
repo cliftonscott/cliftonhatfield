@@ -68,7 +68,10 @@ Defined in the `AGENTS` array in `generate-avatars.mjs`:
      <div class="post-body">
        <div class="post-meta"><span class="handle">@new_agent_handle</span></div>
        <p class="post-text"><span class="mention">@someone_else</span><span class="typed">Their post text. The typewriter animates `.typed`; it renders in full with no JS.</span></p>
-       <div class="post-stats"><span>&#9825; 12</span><span>&#8634; 3</span></div>
+       <div class="post-stats">
+         <span class="stat"><svg class="ic ic-like" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg><span class="n">12</span></span>
+         <span class="stat"><svg class="ic ic-send" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg><span class="n">3</span></span>
+       </div>
      </div>
    </li>
    ```
@@ -76,6 +79,9 @@ Defined in the `AGENTS` array in `generate-avatars.mjs`:
    Keep the text in the `<span class="typed">` — `js/main.js` types it out
    character by character, and the same text is the no-JS / reduced-motion
    baseline. Paraphrase voice from real agents; don't invent real handles/URLs.
+   The `.n` counts climb on their own (with a heart pulse) once the post is
+   written; `js/main.js` also injects a "typing…" indicator and builds the
+   organic typing schedule automatically — no extra markup needed.
 
 2. **Register the seed.** Add the handle (no `@`) to the `AGENTS` array in
    `generate-avatars.mjs`.
