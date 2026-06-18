@@ -76,6 +76,7 @@
   }
   reserveTextHeights();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(reserveTextHeights);
+  window.addEventListener("load", reserveTextHeights); // re-measure once layout fully settles
   var reserveTimer = null;
   window.addEventListener("resize", function () {
     if (reserveTimer) clearTimeout(reserveTimer);
@@ -96,6 +97,16 @@
   var statN = posts.map(function (p) { return p.querySelectorAll(".post-stats .n"); });
   var likeEl = statN.map(function (n) { return n[0] || null; });
   var repostEl = statN.map(function (n) { return n[1] || null; });
+  var heartEl = posts.map(function (p) { return p.querySelector(".post-stats .ic-like"); });
+  // Quick scale-bounce on the heart the instant a like lands. Uses the Web
+  // Animations API (real time, one-shot) — increments only fire while visible,
+  // so no pulses run off-screen.
+  function pulseHeart(i) {
+    var h = heartEl[i];
+    if (h && h.animate) h.animate(
+      [{ transform: "scale(1)" }, { transform: "scale(1.55)" }, { transform: "scale(1)" }],
+      { duration: 320, easing: "cubic-bezier(.34,1.56,.64,1)" });
+  }
   function readCount(el) { return el ? parseInt(el.textContent, 10) || 0 : 0; }
   var baseLikes = likeEl.map(readCount);
   var baseReposts = repostEl.map(readCount);
@@ -134,6 +145,7 @@
       while (liveMs[i] >= nextLike[i]) {
         curLikes[i] += Math.random() < 0.18 ? 2 : 1; // occasional small burst
         if (likeEl[i]) likeEl[i].textContent = curLikes[i];
+        pulseHeart(i);
         nextLike[i] += rand(LIKE_MIN_MS, LIKE_MAX_MS);
       }
       while (liveMs[i] >= nextRepost[i]) {
@@ -198,7 +210,31 @@
   function resetFeed() {
     posts.forEach(function (p) { p.classList.remove("show", "is-typing"); });
     typed.forEach(function (el) { if (el) el.textContent = ""; });
+    scrollTarget = 0;
+    feed.scrollTop = 0; // snap to top instantly so replay never starts mid-scroll
     resetActivity();
+  }
+
+  // Keep the post being written in view, like a live timeline. On desktop the
+  // whole thread fits so this is a no-op; on smaller/taller content it follows
+  // the active post (chat-style: newest near the bottom). We tween scrollTop
+  // ourselves on the virtual clock (tickScroll) rather than CSS smooth-scroll —
+  // CSS smooth makes scrollTop reads lag behind, which mis-positioned the feed on
+  // replay and clipped the first post. scrollToActive only sets the target.
+  var scrollTarget = 0;
+  function scrollToActive(i) {
+    var p = posts[i];
+    var topInContent = (p.getBoundingClientRect().top - feed.getBoundingClientRect().top) + feed.scrollTop;
+    var bottomInContent = topInContent + p.offsetHeight;
+    var t = scrollTarget;
+    if (bottomInContent > scrollTarget + feed.clientHeight) t = bottomInContent - feed.clientHeight + 6;
+    if (topInContent < t) t = topInContent; // post taller than view -> show its top
+    scrollTarget = Math.max(0, Math.min(t, feed.scrollHeight - feed.clientHeight));
+  }
+  function tickScroll(dt) {
+    var cur = feed.scrollTop, diff = scrollTarget - cur;
+    if (Math.abs(diff) < 0.5) { if (cur !== scrollTarget) feed.scrollTop = scrollTarget; return; }
+    feed.scrollTop = cur + diff * Math.min(1, dt / 140); // framerate-independent ease
   }
 
   // State machine, advanced by a virtual clock that only ticks while visible.
@@ -207,6 +243,7 @@
   function startPost(i) {
     state.idx = i; state.phase = "reveal"; state.timer = 0; state.chars = 0;
     posts[i].classList.add("show", "is-typing");
+    scrollToActive(i);
   }
 
   function step(dt) {
@@ -282,6 +319,7 @@
       step(dt);
       tickActivity(dt);
       tickAvatars(dt);
+      tickScroll(dt);
     }
     rafId = window.requestAnimationFrame(loop);
   }
