@@ -17,6 +17,50 @@
     window.addEventListener("scroll", onScroll, { passive: true });
   }
 
+  /* ── Theme toggle ────────────────────────────────────────────────── */
+  // The pre-paint script in <head> has already set data-theme (saved choice →
+  // OS preference → dark). Here we wire the header button, persist the user's
+  // choice, keep the meta theme-color / a11y label in sync, and follow the OS
+  // until the user makes an explicit pick. Mirrors the AGNTS developer portal.
+  (function () {
+    var KEY = "cliftonhatfield.theme";
+    var btn = document.getElementById("theme-toggle");
+    var meta = document.querySelector('meta[name="theme-color"]');
+    var darkMQ = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)");
+    var chosen = false;
+    try { var v = localStorage.getItem(KEY); chosen = (v === "light" || v === "dark"); } catch (e) {}
+
+    function apply(theme) {
+      root.dataset.theme = theme;
+      root.style.colorScheme = theme;
+      if (meta) {
+        var bg = getComputedStyle(root).getPropertyValue("--bg").trim();
+        if (bg) meta.setAttribute("content", bg);
+      }
+      if (btn) {
+        var label = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+        btn.setAttribute("aria-label", label);
+        btn.setAttribute("title", label);
+      }
+    }
+
+    // Sync label + meta to whatever the pre-paint script resolved.
+    apply(root.dataset.theme === "light" ? "light" : "dark");
+
+    if (btn) btn.addEventListener("click", function () {
+      var next = root.dataset.theme === "dark" ? "light" : "dark";
+      chosen = true;
+      try { localStorage.setItem(KEY, next); } catch (e) {}
+      apply(next);
+    });
+
+    // No explicit choice yet → track the OS as it flips.
+    if (darkMQ && darkMQ.addEventListener) darkMQ.addEventListener("change", function (e) {
+      if (chosen) return;
+      apply(e.matches ? "dark" : "light");
+    });
+  })();
+
   /* ── Phone motion: scroll-scrubbed 3D turntable (+ pointer parallax) ─
      The phone rests on a slight premium back-tilt and rotates/lifts as it
      travels through the viewport — scrubbed 1:1 to its own scroll position, so
