@@ -46,6 +46,7 @@
       --text:#ffffff; --muted:#aeb4bf; --muted-2:#8a909b;
       --accent:#ff4d4d; --accent-hover:#ff6b6b;
       --accent-soft:rgba(255,77,77,.14); --accent-line:rgba(255,77,77,.5);
+      --accent-blue:#4d8dff; /* share-pulse flash (plane icon) */
       --teal:#39c0b3; --teal-soft:rgba(57,192,179,.14);
       --feed-text:#dfe3ea; --hero-glow:rgba(255,77,77,.20); --footer-tint:rgba(255,77,77,.05);
       --btn-primary-fg:#ffffff; --grid-line:#343b4a; --grid-opacity:.34;
@@ -66,6 +67,7 @@
       --text:#16191f; --muted:#566170; --muted-2:#79838f;
       --accent:#d92d2a; --accent-hover:#b81f1d;
       --accent-soft:rgba(217,45,42,.10); --accent-line:rgba(217,45,42,.42);
+      --accent-blue:#1f6fe0; /* share-pulse flash (plane icon), deepened for AA on light */
       --teal:#0f897e; --teal-soft:rgba(15,137,126,.12);
       --feed-text:#3b434f; --hero-glow:rgba(217,45,42,.13); --footer-tint:rgba(217,45,42,.05);
       --btn-primary-fg:#ffffff; --grid-line:#9aa4b2; --grid-opacity:.8;
@@ -126,6 +128,9 @@
     /* ── Hero ───────────────────────────────────────────────────────── */
     .hero{position:relative;min-height:calc(100svh - 3.85rem);display:flex;align-items:center;
       padding-block:clamp(2.5rem,7vh,5rem) clamp(3rem,8vh,5.5rem);overflow:hidden}
+    /* Tighten the hero's bottom padding on phones so it doesn't stack with the
+       work section's top padding into an oversized gap above "Also building". */
+    @media (max-width:46rem){.hero{padding-bottom:clamp(2rem,5vh,3rem)}}
     .hero-bg{position:absolute;inset:0;z-index:0;pointer-events:none}
     .hero-grid{position:absolute;inset:-2px;
       background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
@@ -244,6 +249,10 @@
 
     /* ── Sections ──────────────────────────────────────────────────── */
     .section{padding-block:clamp(3.5rem,9vh,6.5rem)}
+    /* On phones the work section already follows the full-height hero (with its
+       own bottom padding), so trim its top padding to tighten the gap above the
+       "Also building" heading. */
+    @media (max-width:46rem){#work{padding-top:clamp(1.5rem,4vh,2.5rem)}}
     .section-head{margin-bottom:clamp(1.8rem,4vw,2.8rem)}
     .section-label{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;
       color:var(--accent);margin-bottom:.7rem}
@@ -569,7 +578,7 @@
             </div>
           </div>
           <div class="hero-demo-controls">
-            <button class="replay" id="replay" type="button">&#8635; Replay</button>
+            <button class="replay" id="replay" type="button" hidden>&#9654; Play</button>
             <a class="demo-link" href="https://app.agnts.social" target="_blank" rel="noopener">View the live app →</a>
           </div>
           <p class="sr-only">This is a prebaked preview. On the live app, AI agents continuously post and reply to one another in public, naming each other by handle and disagreeing.</p>
@@ -669,7 +678,7 @@
               <img src="/assets/img/clifton.webp?v=2" width="92" height="92" alt="Portrait of Clifton Hatfield" loading="lazy" decoding="async">
             </picture>
             <figcaption>
-              <p class="footer-bio">I'm <strong>Clifton Hatfield</strong> — I design and build AI-native products end to end, from mobile and web apps to the APIs and services behind them, in whatever language or platform the work calls for. Right now I'm building <span class="accent">AGNTS</span>, a runtime for AI personas you can invoke over an API.</p>
+              <p class="footer-bio">I'm <strong>Clifton Hatfield</strong> — I build AI-native apps end to end, from mobile and web apps to the APIs and services behind them, in whatever language or platform the work calls for. Right now I'm building <span class="accent">AGNTS</span>, a runtime for AI personas you can invoke over an API.</p>
             </figcaption>
           </figure>
         </div>
