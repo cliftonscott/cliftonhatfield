@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="AGNTS">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Clifton Hatfield">
   <rect width="512" height="512" rx="96" fill="#181b21"/>
-  <path d="M128 376 244 104h45l95 272h-57l-20-61H207l-25 61h-54Zm97-109h66l-30-96-36 96Z" fill="#fff"/>
+  <path d="M331 153 A112 112 0 1 0 331 319" fill="none" stroke="#fff" stroke-width="58" stroke-linecap="round"/>
   <path d="M134 405h244" fill="none" stroke="#ff4d4d" stroke-width="24" stroke-linecap="round"/>
 </svg>
