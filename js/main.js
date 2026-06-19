@@ -200,6 +200,114 @@
     reveals.forEach(function (el) { el.classList.add("in-view"); });
   }
 
+  /* ── Hero grid: Tron-style light traces ──────────────────────────────
+     Quick accent pulses that trace a single grid line — random axis (H/V),
+     random line (biased toward the top-left, where the grid's radial mask is
+     strongest), random direction — then fade, at randomized intervals. Purely
+     decorative and compositor-only (transform + opacity via the Web Animations
+     API, the same idiom the feed uses), with capped concurrency, paused while
+     off-screen/hidden, and gated on motion preference. The resting grid is
+     never touched: traces live in a separate masked overlay layer. */
+  (function () {
+    var bg = document.querySelector(".hero-bg");
+    if (!bg || !animOK || typeof bg.animate !== "function") return;
+
+    var CELL = 46;                       // grid pitch — matches background-size in CSS
+    var MAX_LIVE = 2;                    // cap concurrent traces
+    var GAP_MIN = 1100, GAP_MAX = 3200;  // ms between spawns
+    var THICK = 1;                       // trace thickness (px), centered on the line — matches the 1px grid line
+
+    var layer = document.createElement("div");
+    layer.className = "hero-traces";
+    bg.appendChild(layer);
+
+    function rand(a, b) { return a + Math.random() * (b - a); }
+
+    var live = 0, timer = null, stopped = false, onView = true;
+
+    function spawn() {
+      var w = layer.clientWidth, h = layer.clientHeight;
+      if (!w || !h) return;
+
+      var horizontal = Math.random() < 0.5;
+      var axisLen = horizontal ? w : h;   // length of the line being traced
+      var crossLen = horizontal ? h : w;  // axis along which we pick the line
+      // Bias toward low indices (top / left) — the masked-bright region.
+      var maxIdx = Math.max(1, Math.floor(crossLen / CELL) - 1);
+      var idx = 1 + Math.floor(Math.pow(Math.random(), 1.7) * maxIdx);
+      var pos = idx * CELL;               // sits exactly on a grid line
+
+      var trail = Math.max(150, Math.min(axisLen * 0.34, 340)); // comet length
+      var forward = Math.random() < 0.5;
+      var dur = rand(450, 720);           // quick traversal
+
+      var c = document.createElement("div");
+      c.className = "hero-trace";
+      // Gradient runs transparent tail -> accent -> hot head, oriented so the
+      // bright head leads in the travel direction.
+      var ang = horizontal ? (forward ? 90 : 270) : (forward ? 180 : 0);
+      c.style.backgroundImage = "linear-gradient(" + ang + "deg," +
+        "transparent 0%,var(--grid-accent) 72%,var(--grid-accent-hot) 100%)";
+      if (horizontal) {
+        c.style.left = "0"; c.style.top = pos + "px";
+        c.style.width = trail + "px"; c.style.height = THICK + "px";
+      } else {
+        c.style.top = "0"; c.style.left = pos + "px";
+        c.style.height = trail + "px"; c.style.width = THICK + "px";
+      }
+
+      var delta = axisLen + trail;        // travel fully across and off the far edge
+      var startPx = forward ? -trail : axisLen;
+      var sign = forward ? 1 : -1;
+      function at(p) {                    // transform at progress p (0..1) — linear in time
+        var v = startPx + sign * delta * p;
+        return horizontal ? "translateX(" + v + "px)" : "translateY(" + v + "px)";
+      }
+
+      layer.appendChild(c);
+      live++;
+      var a = c.animate([
+        { transform: at(0),    opacity: 0 },
+        { transform: at(0.12), opacity: 1, offset: 0.12 },
+        { transform: at(0.85), opacity: 1, offset: 0.85 },
+        { transform: at(1),    opacity: 0 }
+      ], { duration: dur, easing: "linear" });
+      a.onfinish = a.oncancel = function () { c.remove(); live--; };
+    }
+
+    function isPaused() { return document.hidden || !onView; }
+    function tick() {
+      timer = null;
+      if (stopped || isPaused()) return; // no timer re-armed while paused; a resume hook restarts us
+      if (live < MAX_LIVE) spawn();
+      timer = window.setTimeout(tick, rand(GAP_MIN, GAP_MAX));
+    }
+    function resume() { // (re)start the loop, unless already running, stopped, or still paused
+      if (stopped || timer || isPaused()) return;
+      timer = window.setTimeout(tick, rand(GAP_MIN, GAP_MAX));
+    }
+
+    // Pause (stop scheduling entirely) while the hero is out of view; resume when it returns.
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(function (e) { onView = e[0].isIntersecting; if (onView) resume(); },
+        { threshold: 0 }).observe(bg);
+    }
+    // Same for background tabs: no timer wakes the main thread until the tab is shown again.
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) resume(); }, { passive: true });
+
+    // Honor a live switch to "reduce motion": stop scheduling and drop the layer.
+    var rmq = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (rmq && rmq.addEventListener) rmq.addEventListener("change", function (e) {
+      if (!e.matches) return;
+      stopped = true;
+      if (timer) window.clearTimeout(timer);
+      timer = null;
+      if (layer.parentNode) layer.remove();
+    });
+
+    if (!isPaused()) timer = window.setTimeout(tick, rand(500, 1400)); // first trace shortly after load
+  })();
+
   /* ── Live feed typewriter ────────────────────────────────────────── */
   var feed = document.getElementById("feed");
   if (!feed || !animOK) return; // static feed already shows full text
