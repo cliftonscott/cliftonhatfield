@@ -387,6 +387,7 @@
   var likeEl = statN.map(function (n) { return n[0] || null; });
   var repostEl = statN.map(function (n) { return n[1] || null; });
   var heartEl = posts.map(function (p) { return p.querySelector(".post-stats .ic-like"); });
+  var sendEl = posts.map(function (p) { return p.querySelector(".post-stats .ic-send"); });
   // Quick scale-bounce on the heart the instant a like lands. Uses the Web
   // Animations API (real time, one-shot) — increments only fire while visible,
   // so no pulses run off-screen.
@@ -394,6 +395,23 @@
     var h = heartEl[i];
     if (h && h.animate) h.animate(
       [{ transform: "scale(1)" }, { transform: "scale(1.26)" }, { transform: "scale(1)" }],
+      { duration: 560, easing: "cubic-bezier(.22,1,.36,1)" });
+  }
+  // Same bounce on the plane when a share lands — but the plane is muted at rest
+  // and only flashes blue for the duration of the pulse. Resolve the tokens to
+  // concrete colors at fire time (WAAPI won't interpolate var()), so it tracks
+  // the active theme; fill reverts to CSS currentColor (--muted-2) when done.
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+  function pulseSend(i) {
+    var s = sendEl[i];
+    if (!s || !s.animate) return;
+    var rest = cssVar("--muted-2"), hot = cssVar("--accent-blue");
+    s.animate(
+      [{ transform: "scale(1)", fill: rest },
+       { transform: "scale(1.26)", fill: hot },
+       { transform: "scale(1)", fill: rest }],
       { duration: 560, easing: "cubic-bezier(.22,1,.36,1)" });
   }
   function readCount(el) { return el ? parseInt(el.textContent, 10) || 0 : 0; }
@@ -415,7 +433,6 @@
     blinkEnd[i] = -1;
   }
   function resetActivity() {
-    talkClock = 0;
     for (var i = 0; i < posts.length; i++) {
       liveMs[i] = -1;
       curLikes[i] = baseLikes[i];
@@ -440,27 +457,26 @@
       while (liveMs[i] >= nextRepost[i]) {
         curReposts[i] += 1;
         if (repostEl[i]) repostEl[i].textContent = curReposts[i];
+        pulseSend(i);
         nextRepost[i] += rand(RT_MIN_MS, RT_MAX_MS);
       }
     }
   }
 
-  /* ── Avatar expression frames (idle / talk / blink) ──────────────── */
-  // The composing agent's mouth flaps (idle<->talk); posted agents blink now and
-  // then. Frames are the per-agent SVGs from generate-avatars.mjs; we derive the
-  // talk/blink URLs from the idle src already in the DOM and preload them.
-  var TALK_MS = 250;                         // mouth flap half-period — calmer, less flickery
+  /* ── Avatar expression frames (idle / blink) ─────────────────────── */
+  // Posted agents blink now and then; the agent currently composing just stays
+  // idle (no mouth animation). Frames are the per-agent SVGs from
+  // generate-avatars.mjs; we derive the blink URL from the idle src already in
+  // the DOM and preload it.
   var BLINK_DUR_MS = 130;                     // eyes-closed duration
   var BLINK_MIN_MS = 2600, BLINK_MAX_MS = 6200; // gap between blinks
   var avImg = posts.map(function (p) { return p.querySelector(".post-avatar"); });
   var frames = avImg.map(function (el) {
     if (!el) return null;
     var idle = el.getAttribute("src");
-    return { idle: idle, talk: idle.replace(/\.svg$/, "-talk.svg"),
-             blink: idle.replace(/\.svg$/, "-blink.svg") };
+    return { idle: idle, blink: idle.replace(/\.svg$/, "-blink.svg") };
   });
-  frames.forEach(function (f) { if (f) { new Image().src = f.talk; new Image().src = f.blink; } });
-  var talkClock = 0;
+  frames.forEach(function (f) { if (f) { new Image().src = f.blink; } });
   var nextBlink = posts.map(function () { return 0; });
   var blinkEnd = posts.map(function () { return -1; });
 
@@ -469,12 +485,9 @@
     if (el && el.getAttribute("src") !== src) el.setAttribute("src", src);
   }
   function tickAvatars(dt) {
-    talkClock += dt;
     for (var i = 0; i < posts.length; i++) {
       if (!frames[i]) continue;
-      if (state.idx === i && state.phase === "typing") {           // talking while writing
-        setFrame(i, Math.floor(talkClock / TALK_MS) % 2 ? frames[i].talk : frames[i].idle);
-      } else if (liveMs[i] >= 0) {                                  // posted: blink
+      if (liveMs[i] >= 0) {                                         // posted: blink
         if (blinkEnd[i] >= 0) {
           if (liveMs[i] >= blinkEnd[i]) {
             blinkEnd[i] = -1; nextBlink[i] = liveMs[i] + rand(BLINK_MIN_MS, BLINK_MAX_MS);
@@ -593,6 +606,11 @@
   }
   function isPaused() { return document.hidden || !onScreen; }
 
+  // The "Play" control stays hidden in the normal case — the feed loops on its
+  // own. It only surfaces if the FPS watchdog downgrades playback to the static
+  // feed, where it's the one way to force the animation back on.
+  var replay = document.getElementById("replay");
+
   var rafId = null, lastTs = null, running = false, started = false, downgraded = false;
 
   // Steady-state FPS watchdog. The previous version sampled FPS over the first
@@ -608,6 +626,7 @@
     if (rafId) window.cancelAnimationFrame(rafId);
     rafId = null;
     renderStatic();
+    if (replay) replay.hidden = false; // autoplay gave up — offer manual Play
   }
   function loop(ts) {
     if (lastTs === null) lastTs = ts;
@@ -641,12 +660,16 @@
     rafId = window.requestAnimationFrame(loop);
   }
 
-  // Replay control: restart the thread from the top.
-  var replay = document.getElementById("replay");
+  // Play control (only visible after a downgrade): force-start the animated feed
+  // from the top. renderStatic() stripped the feed-anim class, and started=true
+  // means loop() won't re-arm it, so we re-add it and reset here before starting.
   if (replay) {
     replay.addEventListener("click", function () {
-      if (!running) { startLoop(); return; }
-      resetFeed(); state.idx = -1; state.phase = "idle"; state.timer = 0;
+      replay.hidden = true;
+      feed.classList.add("feed-anim");
+      resetFeed();
+      state.idx = -1; state.phase = "idle"; state.timer = 0;
+      startLoop();
     });
   }
 
