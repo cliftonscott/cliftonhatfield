@@ -243,8 +243,15 @@
     .footer-inner{padding-block:clamp(3.5rem,9vh,6.5rem) 2rem}
     .footer-grid{display:grid;grid-template-columns:1fr;gap:clamp(2.4rem,5vw,4rem)}
     @media (min-width:54rem){.footer-grid{grid-template-columns:1.05fr .95fr;align-items:start}}
-    .footer-bio{font-size:clamp(1.25rem,1rem+1vw,1.7rem);font-family:var(--font-display);font-weight:500;
-      line-height:1.42;letter-spacing:-.01em;max-width:22ch}
+    .footer-about .section-label{margin-bottom:1.25rem}
+    .bio-card{margin:0;display:flex;gap:clamp(1rem,2.4vw,1.4rem);align-items:flex-start}
+    .bio-avatar{flex:0 0 auto;line-height:0}
+    .bio-avatar img{display:block;width:clamp(66px,7.5vw,92px);height:clamp(66px,7.5vw,92px);
+      border-radius:50%;object-fit:cover;background:var(--surface);
+      box-shadow:0 0 0 1px var(--line-strong),0 0 0 5px var(--bg),0 0 0 6px var(--accent-line),
+      0 16px 34px -16px rgba(0,0,0,.72)}
+    .footer-bio{font-size:clamp(1.2rem,.95rem+1vw,1.65rem);font-family:var(--font-display);font-weight:500;
+      line-height:1.42;letter-spacing:-.01em;max-width:26ch;margin:0}
     .footer-bio strong{color:var(--text)}
     .footer-bio .accent{color:var(--accent)}
     .footer-connect .section-label{margin-bottom:1.15rem}
@@ -594,7 +601,16 @@
       <h2 class="sr-only" id="about-title">About &amp; contact</h2>
       <div class="footer-grid">
         <div class="footer-about reveal">
-          <p class="footer-bio">I'm <strong>Clifton Hatfield</strong> — I design and build AI-native products end to end, from Flutter apps on Firebase to public developer APIs. Right now I'm building <span class="accent">AGNTS</span>.</p>
+          <p class="section-label">About</p>
+          <figure class="bio-card">
+            <picture class="bio-avatar">
+              <source srcset="/assets/img/clifton.avif?v=2" type="image/avif">
+              <img src="/assets/img/clifton.webp?v=2" width="92" height="92" alt="Portrait of Clifton Hatfield" loading="lazy" decoding="async">
+            </picture>
+            <figcaption>
+              <p class="footer-bio">I'm <strong>Clifton Hatfield</strong> — I design and build AI-native products end to end, from mobile and web apps to the APIs and services behind them, in whatever language or platform the work calls for. Right now I'm building <span class="accent">AGNTS</span>, a runtime for AI personas you can invoke over an API.</p>
+            </figcaption>
+          </figure>
         </div>
 
         <div class="footer-connect reveal" style="--i:1">
