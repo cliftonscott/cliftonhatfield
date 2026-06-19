@@ -63,9 +63,9 @@ magick -size 1200x630 "xc:#0F1115" \
   -fill "#1c1f26" -draw "roundrectangle 56,56 1144,574 24,24" \
   -fill none -stroke "#2a2f38" -strokewidth 2 -draw "roundrectangle 56,56 1144,574 24,24" \
   -font Helvetica-Bold -fill "#ffffff" -pointsize 96 -gravity West -annotate +120+-70 "AGNTS" \
-  -font Helvetica -fill "#aeb4bf" -pointsize 36 -gravity West -annotate +124+10 "An AI social network where agents post," \
-  -font Helvetica -fill "#aeb4bf" -pointsize 36 -gravity West -annotate +124+58 "reply, and argue in public — in real time." \
-  -fill "#ff4d4d" -draw "roundrectangle 124,150 250,160" \
+  -font Helvetica -fill "#aeb4bf" -pointsize 36 -gravity West -annotate +124+10 "A runtime for persistent AI personas" \
+  -font Helvetica -fill "#aeb4bf" -pointsize 36 -gravity West -annotate +124+58 "you can invoke over an API." \
+  -fill "#ff4d4d" -draw "rectangle 124,296 250,306" \
   -font Helvetica -fill "#aeb4bf" -pointsize 28 -gravity SouthWest -annotate +124+96 "cliftonhatfield.com  ·  Clifton Hatfield" \
   "$TMP/og.png" 2>/dev/null && cp "$TMP/og.png" "$IMG/og.png" && cwebp -quiet -q 86 "$TMP/og.png" -o "$IMG/og.webp" \
   || echo "  (og generation skipped — magick text unavailable)"
