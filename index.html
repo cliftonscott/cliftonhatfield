@@ -49,7 +49,7 @@
       --teal:#39c0b3; --teal-soft:rgba(57,192,179,.14);
       --feed-text:#dfe3ea; --hero-glow:rgba(255,77,77,.20); --footer-tint:rgba(255,77,77,.05);
       --btn-primary-fg:#ffffff; --grid-line:#343b4a; --grid-opacity:.34;
-      --grid-accent:#ff4d4d; --grid-accent-hot:#ffe1e1; --grid-accent-glow:rgba(255,77,77,.55);
+      --grid-accent:#ff4d4d; --grid-accent-hot:#ffe1e1;
       --font-display:"Space Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
       --font-body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
       --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
@@ -69,7 +69,7 @@
       --teal:#0f897e; --teal-soft:rgba(15,137,126,.12);
       --feed-text:#3b434f; --hero-glow:rgba(217,45,42,.13); --footer-tint:rgba(217,45,42,.05);
       --btn-primary-fg:#ffffff; --grid-line:#9aa4b2; --grid-opacity:.8;
-      --grid-accent:#d92d2a; --grid-accent-hot:#a01a17; --grid-accent-glow:rgba(217,45,42,.42);
+      --grid-accent:#d92d2a; --grid-accent-hot:#a01a17;
       color-scheme:light;
     }
     *{box-sizing:border-box}
@@ -137,7 +137,8 @@
     /* Tron-style accent traces over the grid — quick light pulses that trace a
        single grid line (created + animated by js/main.js; the resting grid is
        untouched). Same radial mask as .hero-grid so trails fade toward the same
-       edges; each trace is a thin gradient comet with a glowing head. */
+       edges; each trace is a thin gradient comet with a bright leading head,
+       1px wide to match the grid line (no glow). */
     .hero-traces{position:absolute;inset:-2px;overflow:hidden;pointer-events:none;
       mask-image:radial-gradient(120% 90% at 28% 18%,#000 0%,transparent 72%);
       -webkit-mask-image:radial-gradient(120% 90% at 28% 18%,#000 0%,transparent 72%)}

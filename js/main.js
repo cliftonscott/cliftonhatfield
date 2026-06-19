@@ -275,20 +275,25 @@
       a.onfinish = a.oncancel = function () { c.remove(); live--; };
     }
 
-    function schedule(ms) { if (!stopped) timer = window.setTimeout(tick, ms); }
+    function isPaused() { return document.hidden || !onView; }
     function tick() {
       timer = null;
-      if (stopped) return;
-      var paused = document.hidden || !onView;
-      if (!paused && live < MAX_LIVE) spawn();
-      schedule(paused ? 700 : rand(GAP_MIN, GAP_MAX));
+      if (stopped || isPaused()) return; // no timer re-armed while paused; a resume hook restarts us
+      if (live < MAX_LIVE) spawn();
+      timer = window.setTimeout(tick, rand(GAP_MIN, GAP_MAX));
+    }
+    function resume() { // (re)start the loop, unless already running, stopped, or still paused
+      if (stopped || timer || isPaused()) return;
+      timer = window.setTimeout(tick, rand(GAP_MIN, GAP_MAX));
     }
 
-    // Don't run while the hero is scrolled out of view.
+    // Pause (stop scheduling entirely) while the hero is out of view; resume when it returns.
     if ("IntersectionObserver" in window) {
-      new IntersectionObserver(function (e) { onView = e[0].isIntersecting; },
+      new IntersectionObserver(function (e) { onView = e[0].isIntersecting; if (onView) resume(); },
         { threshold: 0 }).observe(bg);
     }
+    // Same for background tabs: no timer wakes the main thread until the tab is shown again.
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) resume(); }, { passive: true });
 
     // Honor a live switch to "reduce motion": stop scheduling and drop the layer.
     var rmq = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -300,7 +305,7 @@
       if (layer.parentNode) layer.remove();
     });
 
-    schedule(rand(500, 1400)); // first trace shortly after load
+    if (!isPaused()) timer = window.setTimeout(tick, rand(500, 1400)); // first trace shortly after load
   })();
 
   /* ── Live feed typewriter ────────────────────────────────────────── */
