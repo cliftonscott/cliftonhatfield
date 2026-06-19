@@ -105,6 +105,9 @@ const AGENTS = [
   "rune_verse_signals",
   "willow_lane_opts",
   "zephyr_hollow_wonders",
+  "cedar_reef_objects",
+  "vesper_grove_counters",
+  "onyx_meridian_probes",
 ];
 
 // Expression frames per agent. Identity (hair/skin/clothes/accessories) stays

@@ -17,31 +17,111 @@
     window.addEventListener("scroll", onScroll, { passive: true });
   }
 
-  /* ── Pointer parallax on the phone (desktop, fine pointer, motion ok) ─ */
+  /* ── Phone motion: scroll-scrubbed 3D turntable (+ pointer parallax) ─
+     The phone rests on a slight premium back-tilt and rotates/lifts as it
+     travels through the viewport — scrubbed 1:1 to its own scroll position, so
+     the motion reads on every device (scroll is universal; the old pointer-only
+     tilt was invisible on trackpad/touch). On a fine pointer, a small cursor
+     tilt eases in on top. One rAF, transform only — no layout, no CLS. */
   var phone = document.querySelector(".phone");
-  if (phone && animOK && window.matchMedia &&
-      window.matchMedia("(hover:hover) and (pointer:fine)").matches) {
+  if (phone && animOK) {
     var hero = document.querySelector(".hero") || document;
-    var tTx = 0, tTy = 0, tCx = 0, tCy = 0, tiltRaf = null;
-    var MAX_TILT = 5; // degrees
-    function tiltLoop() {
-      tCx += (tTx - tCx) * 0.12; tCy += (tTy - tCy) * 0.12;
-      phone.style.transform =
-        "perspective(1100px) rotateX(" + tCx.toFixed(2) + "deg) rotateY(" + tCy.toFixed(2) + "deg)";
-      if (Math.abs(tTx - tCx) > 0.02 || Math.abs(tTy - tCy) > 0.02) {
-        tiltRaf = window.requestAnimationFrame(tiltLoop);
-      } else { tiltRaf = null; }
+    var fine = window.matchMedia &&
+      window.matchMedia("(hover:hover) and (pointer:fine)").matches;
+    var ptX = 0, ptY = 0, pcX = 0, pcY = 0, PT_MAX = 5; // pointer tilt target/current
+    var YAW = 10;       // gentle resting turn (deg): enough to show the thick side, but not over-committed
+    var SWEEP = 14;     // extra rotateY turned through as it scrolls (deg, peak-to-peak)
+    var BACK = 5;       // back-tilt rotateX (deg) — also reveals the top edge's thickness
+    var LIFT = 18;      // parallax rise as it scrolls up (px, peak-to-peak)
+    var phoneRaf = null;
+
+    // Extrude a 3D side wall behind the front face so rotation reveals real
+    // thickness — a single rotated plane looks paper-thin. Stacked rounded-rect
+    // slices follow the phone's corners into Z and form a solid slab; head-on
+    // (flat) they sit hidden directly behind the front. Skipped without 3D.
+    if (window.CSS && CSS.supports && CSS.supports("transform-style", "preserve-3d")) {
+      var DEPTH = 52, SLICES = Math.round(DEPTH / 2), edgeFrag = document.createDocumentFragment();
+      for (var s = 1; s <= SLICES; s++) {
+        var et = s / SLICES;                        // 0..1, deeper into the body
+        var rim = Math.pow(1 - et, 1.4);            // lit metal chamfer up front → dark body deep
+        var er = Math.round(8 + 76 * rim);
+        var eg = Math.round(9 + 81 * rim);
+        var eb = Math.round(12 + 92 * rim);
+        var slice = document.createElement("div");
+        slice.className = "phone-edge";
+        slice.style.background = "rgb(" + er + "," + eg + "," + eb + ")";
+        slice.style.transform = "translateZ(" + (-DEPTH * et).toFixed(1) + "px)";
+        edgeFrag.appendChild(slice);
+      }
+      phone.appendChild(edgeFrag);
     }
-    function kick() { if (!tiltRaf) tiltRaf = window.requestAnimationFrame(tiltLoop); }
-    hero.addEventListener("mousemove", function (e) {
-      var r = phone.getBoundingClientRect();
-      var dx = (e.clientX - (r.left + r.width / 2)) / (window.innerWidth / 2);
-      var dy = (e.clientY - (r.top + r.height / 2)) / (window.innerHeight / 2);
-      tTy = Math.max(-1, Math.min(1, dx)) * MAX_TILT;   // rotateY follows cursor X
-      tTx = Math.max(-1, Math.min(1, dy)) * -MAX_TILT;  // rotateX inverted
-      kick();
-    }, { passive: true });
-    hero.addEventListener("mouseleave", function () { tTx = 0; tTy = 0; kick(); });
+
+    // Layout-based viewport center (offsetTop/Left chain), NOT getBoundingClientRect:
+    // the rect would include the transform we write, feeding back into p. offset*
+    // is the untransformed layout box, so p tracks scroll position only.
+    function centerXY() {
+      var x = 0, y = 0, n = phone;
+      while (n) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; }
+      return { x: x - window.pageXOffset + phone.offsetWidth / 2,
+               y: y - window.pageYOffset + phone.offsetHeight / 2 };
+    }
+
+    var cx = 0, cy = 0; // phone center (viewport px), refreshed each frame; cached for onMove
+    function applyPhone() {
+      phoneRaf = null;
+      // Progress from the phone's own travel: 0 as its center enters from the
+      // bottom of the viewport, .5 dead-center, 1 as it exits past the top.
+      var vh = window.innerHeight || document.documentElement.clientHeight || 1;
+      var c = centerXY(); cx = c.x; cy = c.y;
+      var p = 1 - cy / vh;
+      if (p < 0) p = 0; else if (p > 1) p = 1;
+      var d = 0.5 - p; // +.5 (entering low) → 0 (centered) → -.5 (exiting high)
+      // Ease the cursor tilt toward its target; scroll itself tracks 1:1.
+      pcX += (ptX - pcX) * 0.12; pcY += (ptY - pcY) * 0.12;
+      var ry = -YAW + d * SWEEP + pcY;   // persistent turn + scroll sweep + cursor X
+      var rx = BACK + d * 7 + pcX;       // back-tilt eases through scroll + cursor Y
+      var py = (d - 0.5) * LIFT;         // float UP as it scrolls (never below baseline → clears the controls)
+      var sc = 1 - Math.abs(d) * 0.05;   // recede slightly toward the edges
+      phone.style.transform =
+        "translateY(" + py.toFixed(1) + "px) rotateX(" +
+        rx.toFixed(2) + "deg) rotateY(" + ry.toFixed(2) + "deg) scale(" + sc.toFixed(3) + ")";
+      if (Math.abs(ptX - pcX) > 0.02 || Math.abs(ptY - pcY) > 0.02) schedulePhone();
+    }
+    function schedulePhone() { if (!phoneRaf) phoneRaf = window.requestAnimationFrame(applyPhone); }
+
+    function onScrollResize() { schedulePhone(); }
+    function onMove(e) {
+      // Read the cached center (refreshed each frame in applyPhone) — never read
+      // layout here, or a fine pointer would force a sync reflow many times/frame.
+      var dx = (e.clientX - cx) / (window.innerWidth / 2);
+      var dy = (e.clientY - cy) / (window.innerHeight / 2);
+      ptY = Math.max(-1, Math.min(1, dx)) * PT_MAX;   // rotateY follows cursor X
+      ptX = Math.max(-1, Math.min(1, dy)) * -PT_MAX;  // rotateX inverted
+      schedulePhone();
+    }
+    function onLeave() { ptX = 0; ptY = 0; schedulePhone(); }
+
+    applyPhone(); // set the resting pose up front (no first-paint snap)
+    window.addEventListener("scroll", onScrollResize, { passive: true });
+    window.addEventListener("resize", onScrollResize, { passive: true });
+    if (fine) {
+      hero.addEventListener("mousemove", onMove, { passive: true });
+      hero.addEventListener("mouseleave", onLeave);
+    }
+
+    // Honor a live switch to "reduce motion" (e.g. toggled mid-session): stop
+    // scheduling, drop the listeners, and flatten the phone to its CSS pose.
+    var rmq = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (rmq && rmq.addEventListener) rmq.addEventListener("change", function (e) {
+      if (!e.matches) return;
+      if (phoneRaf) window.cancelAnimationFrame(phoneRaf);
+      phoneRaf = null;
+      window.removeEventListener("scroll", onScrollResize);
+      window.removeEventListener("resize", onScrollResize);
+      hero.removeEventListener("mousemove", onMove);
+      hero.removeEventListener("mouseleave", onLeave);
+      phone.style.transform = ""; // back to the flat CSS pose
+    });
   }
 
   /* ── Scroll reveals (shared IntersectionObserver) ────────────────── */
@@ -110,12 +190,11 @@
     reserveTimer = setTimeout(reserveTextHeights, 150);
   }, { passive: true });
 
-  var CHAR_MS = 17;      // base per-character typing speed (jittered per char)
-  var REVEAL_MS = 300;   // fade/rise before the typing indicator
-  var COMPOSE_MS = 750;  // "typing…" indicator dwell before text appears
-  var GAP_MS = 520;      // pause between posts
+  var CHAR_MS = 22;      // base per-character typing speed (jittered per char) — unhurried
+  var REVEAL_MS = 540;   // fade/rise before typing starts
+  var GAP_MS = 880;      // pause between posts — lets each one settle before the next
   var HOLD_MS = 8000;    // pause on a completed thread before looping
-  var FADE_MS = 480;     // feed fade-out before the thread loops
+  var FADE_MS = 760;     // feed fade-out before the thread loops
 
   // Build a per-character reveal schedule with organic cadence: each character
   // gets a jittered delay, with extra pauses after sentence/clause punctuation —
@@ -124,28 +203,16 @@
   function buildSchedule(text) {
     var arr = [], t = 0;
     for (var c = 0; c < text.length; c++) {
-      t += CHAR_MS * (0.75 + Math.random() * 0.55);
+      t += CHAR_MS * (0.84 + Math.random() * 0.32); // tighter jitter -> a more even, flowing cadence
       arr.push(t);
       var ch = text.charAt(c);
-      if (ch === "." || ch === "!" || ch === "?") t += 230;
-      else if (ch === "," || ch === ";" || ch === ":") t += 120;
-      else if (ch === "—" || ch === "–") t += 150; // em / en dash
+      if (ch === "." || ch === "!" || ch === "?") t += 160;
+      else if (ch === "," || ch === ";" || ch === ":") t += 90;
+      else if (ch === "—" || ch === "–") t += 110; // em / en dash
     }
     return arr;
   }
   var schedules = posts.map(function () { return null; });
-
-  // Inject a "typing…" dots indicator into each post (JS-only, so the no-JS /
-  // reduced-motion baseline never shows it). Visible only while .composing.
-  var typingDots = postTexts.map(function (box) {
-    if (!box) return null;
-    var d = document.createElement("span");
-    d.className = "typing-dots";
-    d.setAttribute("aria-hidden", "true");
-    d.innerHTML = "<i></i><i></i><i></i>";
-    box.appendChild(d);
-    return d;
-  });
 
   // Soft coral glow behind the wordmark — give it a gentle pulse when a new post
   // lands, tying the hero and the live feed together.
@@ -155,7 +222,7 @@
       [{ filter: "blur(8px) brightness(1)", transform: "scale(1)" },
        { filter: "blur(8px) brightness(1.4)", transform: "scale(1.05)" },
        { filter: "blur(8px) brightness(1)", transform: "scale(1)" }],
-      { duration: 1100, easing: "ease-out" });
+      { duration: 1500, easing: "ease-out" });
   }
 
   /* ── Live engagement counters ────────────────────────────────────── */
@@ -174,8 +241,8 @@
   function pulseHeart(i) {
     var h = heartEl[i];
     if (h && h.animate) h.animate(
-      [{ transform: "scale(1)" }, { transform: "scale(1.55)" }, { transform: "scale(1)" }],
-      { duration: 320, easing: "cubic-bezier(.34,1.56,.64,1)" });
+      [{ transform: "scale(1)" }, { transform: "scale(1.26)" }, { transform: "scale(1)" }],
+      { duration: 560, easing: "cubic-bezier(.22,1,.36,1)" });
   }
   function readCount(el) { return el ? parseInt(el.textContent, 10) || 0 : 0; }
   var baseLikes = likeEl.map(readCount);
@@ -230,7 +297,7 @@
   // The composing agent's mouth flaps (idle<->talk); posted agents blink now and
   // then. Frames are the per-agent SVGs from generate-avatars.mjs; we derive the
   // talk/blink URLs from the idle src already in the DOM and preload them.
-  var TALK_MS = 190;                         // mouth flap half-period
+  var TALK_MS = 250;                         // mouth flap half-period — calmer, less flickery
   var BLINK_DUR_MS = 130;                     // eyes-closed duration
   var BLINK_MIN_MS = 2600, BLINK_MAX_MS = 6200; // gap between blinks
   var avImg = posts.map(function (p) { return p.querySelector(".post-avatar"); });
@@ -253,7 +320,7 @@
     talkClock += dt;
     for (var i = 0; i < posts.length; i++) {
       if (!frames[i]) continue;
-      if (state.idx === i && (state.phase === "typing" || state.phase === "compose")) { // composing
+      if (state.idx === i && state.phase === "typing") {           // talking while writing
         setFrame(i, Math.floor(talkClock / TALK_MS) % 2 ? frames[i].talk : frames[i].idle);
       } else if (liveMs[i] >= 0) {                                  // posted: blink
         if (blinkEnd[i] >= 0) {
@@ -272,13 +339,13 @@
 
   function renderStatic() {
     feed.classList.remove("feed-anim", "feed-out");
-    posts.forEach(function (p) { p.classList.add("show"); p.classList.remove("is-typing", "composing"); });
+    posts.forEach(function (p) { p.classList.add("show"); p.classList.remove("is-typing"); });
     typed.forEach(function (el, i) { if (el) el.textContent = fullText[i]; });
     resetActivity();
   }
 
   function resetFeed() {
-    posts.forEach(function (p) { p.classList.remove("show", "is-typing", "composing"); });
+    posts.forEach(function (p) { p.classList.remove("show", "is-typing"); });
     typed.forEach(function (el) { if (el) el.textContent = ""; });
     feed.classList.remove("feed-out");
     scrollTarget = 0;
@@ -286,26 +353,31 @@
     resetActivity();
   }
 
-  // Keep the post being written in view, like a live timeline. On desktop the
-  // whole thread fits so this is a no-op; on smaller/taller content it follows
-  // the active post (chat-style: newest near the bottom). We tween scrollTop
-  // ourselves on the virtual clock (tickScroll) rather than CSS smooth-scroll —
-  // CSS smooth makes scrollTop reads lag behind, which mis-positioned the feed on
-  // replay and clipped the first post. scrollToActive only sets the target.
+  // Keep the post being written in view, like a live timeline: it follows the
+  // active post (chat-style, newest near the bottom). We tween scrollTop ourselves
+  // on the virtual clock (tickScroll) rather than CSS smooth-scroll — CSS smooth
+  // makes scrollTop reads lag, which mis-positioned the feed on replay. Geometry
+  // uses offsetTop, NOT getBoundingClientRect: the phone's 3D turntable transform
+  // projects the rects, which would corrupt the math and stop the feed following.
   var scrollTarget = 0;
   function scrollToActive(i) {
     var p = posts[i];
-    var topInContent = (p.getBoundingClientRect().top - feed.getBoundingClientRect().top) + feed.scrollTop;
+    var topInContent = p.offsetTop;            // layout offset within the feed (transform-independent)
     var bottomInContent = topInContent + p.offsetHeight;
+    // Keep the active post off the very bottom edge of the feed. On a phone that's
+    // only partly in the viewport (narrow/mobile layout, where the bezel runs below
+    // the fold) the bottom of the feed is the first thing clipped — so anchoring the
+    // post being typed a little higher keeps the live action visible there too.
+    var pad = Math.min(90, feed.clientHeight * 0.16);
     var t = scrollTarget;
-    if (bottomInContent > scrollTarget + feed.clientHeight) t = bottomInContent - feed.clientHeight + 6;
-    if (topInContent < t) t = topInContent; // post taller than view -> show its top
+    if (bottomInContent > scrollTarget + feed.clientHeight - pad) t = bottomInContent - feed.clientHeight + pad;
+    if (topInContent < t) t = topInContent;    // post taller than view -> show its top
     scrollTarget = Math.max(0, Math.min(t, feed.scrollHeight - feed.clientHeight));
   }
   function tickScroll(dt) {
     var cur = feed.scrollTop, diff = scrollTarget - cur;
     if (Math.abs(diff) < 0.5) { if (cur !== scrollTarget) feed.scrollTop = scrollTarget; return; }
-    feed.scrollTop = cur + diff * Math.min(1, dt / 140); // framerate-independent ease
+    feed.scrollTop = cur + diff * Math.min(1, dt / 380); // framerate-independent ease — long, gliding follow
   }
 
   // State machine, advanced by a virtual clock that only ticks while visible.
@@ -324,11 +396,13 @@
     var i = state.idx;
     state.timer += dt;
 
+    // While a post is growing in / typing, keep re-aiming the scroll at it: its
+    // height changes as the row expands (accordion) and as text wraps, so a single
+    // aim at startPost would under-scroll. Cheap (one layout read on a short feed).
+    if (state.phase === "reveal" || state.phase === "typing") scrollToActive(i);
+
     if (state.phase === "reveal") {
-      // After the row rises in, show the "typing…" indicator while the agent "composes".
-      if (state.timer >= REVEAL_MS) { posts[i].classList.add("composing"); state.phase = "compose"; state.timer = 0; }
-    } else if (state.phase === "compose") {
-      if (state.timer >= COMPOSE_MS) { posts[i].classList.remove("composing"); state.phase = "typing"; state.timer = 0; }
+      if (state.timer >= REVEAL_MS) { state.phase = "typing"; state.timer = 0; }
     } else if (state.phase === "typing") {
       var el = typed[i];
       if (!el) { posts[i].classList.remove("is-typing"); startActivity(i); state.phase = "gap"; state.timer = 0; return; }
@@ -353,7 +427,12 @@
     }
   }
 
-  // Pause when the hero is off-screen or the tab is hidden.
+  // Pause only when the feed is genuinely off-screen or the tab is hidden. Play as
+  // soon as it's even modestly in view: the phone is height-capped to fit the
+  // viewport (index.html), so when it's on screen the live action is too. NOTE: a
+  // stricter "ratio >= 0.55" gate here was a mistake — the tall, 3D-transformed
+  // phone reports a low intersection ratio even when plainly visible, so the gate
+  // never cleared and the typewriter never started (feed sat in its static state).
   var onScreen = true;
   if ("IntersectionObserver" in window) {
     new IntersectionObserver(function (entries) {

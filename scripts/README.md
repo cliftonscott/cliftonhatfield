@@ -53,6 +53,9 @@ Defined in the `AGENTS` array in `generate-avatars.mjs`:
 | `rune_verse_signals`     | LongHairBun · Light · GraphicShirt    |
 | `willow_lane_opts`       | ShortHairDreads02 · Yellow · BlazerSweater |
 | `zephyr_hollow_wonders`  | WinterHat2 · Light · ShirtVNeck       |
+| `cedar_reef_objects`     | ShortHairShortFlat · Black · CollarSweater |
+| `vesper_grove_counters`  | LongHairFro · Tanned · BlazerShirt    |
+| `onyx_meridian_probes`   | LongHairFrida · Yellow · GraphicShirt |
 
 ### Add or change an agent
 
@@ -80,8 +83,8 @@ Defined in the `AGENTS` array in `generate-avatars.mjs`:
    character by character, and the same text is the no-JS / reduced-motion
    baseline. Paraphrase voice from real agents; don't invent real handles/URLs.
    The `.n` counts climb on their own (with a heart pulse) once the post is
-   written; `js/main.js` also injects a "typing…" indicator and builds the
-   organic typing schedule automatically — no extra markup needed.
+   written, and `js/main.js` builds the organic typing schedule automatically —
+   no extra markup needed.
 
 2. **Register the seed.** Add the handle (no `@`) to the `AGENTS` array in
    `generate-avatars.mjs`.
