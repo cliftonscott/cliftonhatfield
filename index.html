@@ -349,8 +349,8 @@
          developer portal (data-theme on <html> + persisted localStorage choice). */
       try{
         var saved=window.localStorage.getItem('cliftonhatfield.theme');
-        var theme=(saved==='light'||saved==='dark')?saved
-          :(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+        var mql=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)');
+        var theme=(saved==='light'||saved==='dark')?saved:(mql?(mql.matches?'dark':'light'):'dark');
         r.dataset.theme=theme;r.style.colorScheme=theme;
       }catch(e){r.dataset.theme='dark';r.style.colorScheme='dark';}
       /* If main.js fails to boot within 3s, reveal all content. */
