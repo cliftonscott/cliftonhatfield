@@ -39,7 +39,7 @@
     @font-face{font-family:"JetBrains Mono";src:url("/assets/fonts/jetbrains-mono-400.woff2") format("woff2");font-weight:400;font-style:normal;font-display:swap}
     @font-face{font-family:"JetBrains Mono";src:url("/assets/fonts/jetbrains-mono-500.woff2") format("woff2");font-weight:500;font-style:normal;font-display:swap}
 
-    /* ── Tokens ─────────────────────────────────────────────────────── */
+    /* ── Tokens — dark is the default theme; light overrides below ───── */
     :root{
       --bg:#0F1115; --surface:#1c1f26; --surface-2:#20232c;
       --line:#2a2f38; --line-strong:#343b4a;
@@ -47,6 +47,7 @@
       --accent:#ff4d4d; --accent-hover:#ff6b6b;
       --accent-soft:rgba(255,77,77,.14); --accent-line:rgba(255,77,77,.5);
       --teal:#39c0b3; --teal-soft:rgba(57,192,179,.14);
+      --feed-text:#dfe3ea; --hero-glow:rgba(255,77,77,.20); --footer-tint:rgba(255,77,77,.05);
       --font-display:"Space Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
       --font-body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
       --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
@@ -54,6 +55,18 @@
       --ease:cubic-bezier(.16,1,.3,1);
       --ease-flow:cubic-bezier(.4,0,.2,1); /* gentle, slow-settling easing for the live-feed motion */
       color-scheme:dark;
+    }
+    /* Light theme — keeps the AGNTS red brand on warm-neutral light surfaces.
+       Accent + teal are deepened so links/labels hold AA contrast on white. */
+    :root[data-theme="light"]{
+      --bg:#f6f7f9; --surface:#ffffff; --surface-2:#eef1f5;
+      --line:#e2e7ee; --line-strong:#cbd3df;
+      --text:#16191f; --muted:#566170; --muted-2:#79838f;
+      --accent:#d92d2a; --accent-hover:#b81f1d;
+      --accent-soft:rgba(217,45,42,.10); --accent-line:rgba(217,45,42,.42);
+      --teal:#0f897e; --teal-soft:rgba(15,137,126,.12);
+      --feed-text:#3b434f; --hero-glow:rgba(217,45,42,.13); --footer-tint:rgba(217,45,42,.05);
+      color-scheme:light;
     }
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
@@ -93,6 +106,21 @@
     .nav .nav-cta{color:var(--accent)}
     @media (max-width:32rem){.nav .nav-link{display:none}}
 
+    /* Theme toggle — same sun/moon icon set as the AGNTS developer portal.
+       Shows the icon for the theme you'd switch TO (sun in dark, moon in light). */
+    .theme-toggle{display:inline-grid;place-items:center;width:2.15rem;height:2.15rem;padding:0;
+      border-radius:8px;border:1px solid transparent;background:transparent;color:var(--muted);
+      cursor:pointer;flex-shrink:0;line-height:0;
+      transition:color .18s ease,background .18s ease,border-color .18s ease}
+    .theme-toggle:hover,.theme-toggle:focus-visible{color:var(--text);
+      background:color-mix(in srgb,var(--surface) 78%,var(--accent) 22%);border-color:var(--line)}
+    .themeIcon{display:block;width:18px;height:18px;fill:none;stroke:currentColor;
+      stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+    .themeIconMoon{fill:currentColor;stroke:none}
+    .theme-toggle .themeIconMoon{display:none}
+    :root[data-theme="light"] .theme-toggle .themeIconSun{display:none}
+    :root[data-theme="light"] .theme-toggle .themeIconMoon{display:block}
+
     /* ── Hero ───────────────────────────────────────────────────────── */
     .hero{position:relative;min-height:calc(100svh - 3.85rem);display:flex;align-items:center;
       padding-block:clamp(2.5rem,7vh,5rem) clamp(3rem,8vh,5.5rem);overflow:hidden}
@@ -103,7 +131,7 @@
       mask-image:radial-gradient(120% 90% at 28% 18%,#000 0%,transparent 72%);
       -webkit-mask-image:radial-gradient(120% 90% at 28% 18%,#000 0%,transparent 72%)}
     .hero-glow{position:absolute;left:-8%;top:6%;width:62%;height:60%;border-radius:50%;
-      background:radial-gradient(closest-side,rgba(255,77,77,.20),transparent 72%);filter:blur(8px)}
+      background:radial-gradient(closest-side,var(--hero-glow),transparent 72%);filter:blur(8px)}
     .hero-inner{position:relative;z-index:1;display:grid;grid-template-columns:1fr;gap:clamp(2.4rem,6vw,4rem);
       width:100%;align-items:center}
     @media (min-width:62rem){.hero-inner{grid-template-columns:1.04fr .96fr}}
@@ -183,7 +211,7 @@
     .post-meta .handle{font-family:var(--font-mono);font-size:.74rem;color:var(--text)}
     .post-topic{font-family:var(--font-mono);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;
       color:var(--muted-2);border:1px solid var(--line);border-radius:999px;padding:.1rem .4rem}
-    .post-text{font-size:.83rem;line-height:1.5;color:#dfe3ea}
+    .post-text{font-size:.83rem;line-height:1.5;color:var(--feed-text)}
     .post-text .mention{font-family:var(--font-mono);font-size:.78em;color:var(--accent);
       background:var(--accent-soft);border-radius:5px;padding:.02em .28em;margin-right:.15em}
     .post-stats{display:flex;gap:.9rem;margin-top:.35rem;font-family:var(--font-mono);font-size:.7rem;color:var(--muted-2)}
@@ -239,7 +267,7 @@
     .project--soon{opacity:.92}
 
     /* ── Footer / contact ──────────────────────────────────────────── */
-    .site-footer{border-top:1px solid var(--line);background:linear-gradient(180deg,transparent,rgba(255,77,77,.05))}
+    .site-footer{border-top:1px solid var(--line);background:linear-gradient(180deg,transparent,var(--footer-tint))}
     .footer-inner{padding-block:clamp(3.5rem,9vh,6.5rem) 2rem}
     .footer-grid{display:grid;grid-template-columns:1fr;gap:clamp(2.4rem,5vw,4rem)}
     @media (min-width:54rem){.footer-grid{grid-template-columns:1.05fr .95fr;align-items:start}}
@@ -312,10 +340,19 @@
   </style>
 
   <script>
-    /* Pre-paint: declare JS + decide motion so animated bits start hidden without FOUC. */
+    /* Pre-paint: declare JS, decide motion, and resolve the color theme so the
+       right palette + animated bits start without a flash. */
     (function(){
       var r=document.documentElement;r.classList.add('js');
       try{if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches)r.classList.add('anim');}catch(e){r.classList.add('anim');}
+      /* Theme: explicit saved choice → OS preference → dark. Mirrors the AGNTS
+         developer portal (data-theme on <html> + persisted localStorage choice). */
+      try{
+        var saved=window.localStorage.getItem('cliftonhatfield.theme');
+        var theme=(saved==='light'||saved==='dark')?saved
+          :(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+        r.dataset.theme=theme;r.style.colorScheme=theme;
+      }catch(e){r.dataset.theme='dark';r.style.colorScheme='dark';}
       /* If main.js fails to boot within 3s, reveal all content. */
       window.setTimeout(function(){if(!r.dataset.ready)r.classList.add('no-anim-fallback');},3000);
     })();
@@ -334,6 +371,15 @@
         <a class="nav-link" href="#work">Work</a>
         <a class="nav-link" href="#about">About</a>
         <a class="nav-cta" href="https://app.agnts.social" target="_blank" rel="noopener">AGNTS&nbsp;↗</a>
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch color theme" title="Switch color theme">
+          <svg class="themeIcon themeIconSun" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.25"></circle>
+            <path d="M12 2.5v2.1M12 19.4v2.1M4.6 4.6l1.5 1.5M17.9 17.9l1.5 1.5M2.5 12h2.1M19.4 12h2.1M4.6 19.4l1.5-1.5M17.9 6.1l1.5-1.5"></path>
+          </svg>
+          <svg class="themeIcon themeIconMoon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M16.22 12.58A6.8 6.8 0 0 1 8 4.36a6.9 6.9 0 1 0 8.22 8.22Z"></path>
+          </svg>
+        </button>
       </nav>
     </div>
   </header>
@@ -639,6 +685,6 @@
     </div>
   </footer>
 
-  <script src="/js/main.js?v=21" defer></script>
+  <script src="/js/main.js?v=22" defer></script>
 </body>
 </html>
