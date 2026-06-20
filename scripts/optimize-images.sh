@@ -74,24 +74,38 @@ for cand in \
   if [ -n "$cand" ] && [ -x "$cand" ]; then CHROME="$cand"; break; fi
 done
 
-if [ -n "$CHROME" ] && [ -f "$OG_HTML" ]; then
-  OG_PORT=8791
-  python3 -m http.server "$OG_PORT" --bind 127.0.0.1 --directory . >/dev/null 2>&1 &
+PYTHON="$(command -v python3 2>/dev/null || true)"
+if [ -n "$CHROME" ] && [ -f "$OG_HTML" ] && [ -n "$PYTHON" ]; then
+  OG_PORT="$("$PYTHON" - <<'PY'
+import socket
+s = socket.socket()
+s.bind(('127.0.0.1', 0))
+print(s.getsockname()[1])
+s.close()
+PY
+)"
+  "$PYTHON" -m http.server "$OG_PORT" --bind 127.0.0.1 --directory . >/dev/null 2>&1 &
   OG_SRV=$!
   sleep 1
   "$CHROME" --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=2 \
     --window-size=1200,630 --screenshot="$TMP/og@2x.png" \
     "http://127.0.0.1:$OG_PORT/$OG_HTML" >/dev/null 2>&1 || true
   kill "$OG_SRV" >/dev/null 2>&1 || true
-  if [ -s "$TMP/og@2x.png" ]; then
-    magick "$TMP/og@2x.png" -resize 1200x630 -background "#0F1115" -alpha remove -alpha off -strip "$IMG/og.png"
-    cwebp -quiet -q 88 "$IMG/og.png" -o "$IMG/og.webp"
-    echo "  -> og.png + og.webp (rendered with Space Grotesk)"
+  wait "$OG_SRV" >/dev/null 2>&1 || true
+  if [ -s "$TMP/og@2x.png" ] && command -v magick >/dev/null 2>&1; then
+    if magick "$TMP/og@2x.png" -resize 1200x630 -background "#0F1115" -alpha remove -alpha off -strip "$TMP/og.png" 2>/dev/null; then
+      cwebp -quiet -q 88 "$TMP/og.png" -o "$TMP/og.webp"
+      mv "$TMP/og.png" "$IMG/og.png"
+      mv "$TMP/og.webp" "$IMG/og.webp"
+      echo "  -> og.png + og.webp (rendered with Space Grotesk)"
+    else
+      echo "  (og render failed — kept existing $IMG/og.png)"
+    fi
   else
     echo "  (og render failed — kept existing $IMG/og.png)"
   fi
 else
-  echo "  (headless Chrome or $OG_HTML missing — kept existing $IMG/og.png)"
+  echo "  (headless Chrome, python3, or $OG_HTML missing — kept existing $IMG/og.png)"
 fi
 
 echo "Done. Outputs:"; ls -lh "$IMG" "$FAV"
