@@ -58,16 +58,54 @@ magick -background none "$FAV/favicon.svg" -resize 180x180 "$FAV/apple-touch-ico
 magick -background none "$FAV/favicon.svg" -resize 192x192 "$FAV/icon-192.png" 2>/dev/null || true
 magick -background none "$FAV/favicon.svg" -resize 512x512 "$FAV/icon-512.png" 2>/dev/null || true
 
-echo "Open Graph card (1200x630, generated) ->"
-magick -size 1200x630 "xc:#0F1115" \
-  -fill "#1c1f26" -draw "roundrectangle 56,56 1144,574 24,24" \
-  -fill none -stroke "#2a2f38" -strokewidth 2 -draw "roundrectangle 56,56 1144,574 24,24" \
-  -font Helvetica-Bold -fill "#ffffff" -pointsize 96 -gravity West -annotate +120+-70 "AGNTS" \
-  -font Helvetica -fill "#aeb4bf" -pointsize 36 -gravity West -annotate +124+10 "A runtime for persistent AI personas" \
-  -font Helvetica -fill "#aeb4bf" -pointsize 36 -gravity West -annotate +124+58 "you can invoke over an API." \
-  -fill "#ff4d4d" -draw "rectangle 124,296 250,306" \
-  -font Helvetica -fill "#aeb4bf" -pointsize 28 -gravity SouthWest -annotate +124+96 "cliftonhatfield.com  ·  Clifton Hatfield" \
-  "$TMP/og.png" 2>/dev/null && cp "$TMP/og.png" "$IMG/og.png" && cwebp -quiet -q 86 "$TMP/og.png" -o "$IMG/og.webp" \
-  || echo "  (og generation skipped — magick text unavailable)"
+echo "Open Graph card (1200x630, rendered from scripts/og-card.html) ->"
+# The card uses the brand font (Space Grotesk) + the headshot, so we render the
+# HTML template with headless Chrome and downscale a 2x screenshot to 1200x630.
+# Edit scripts/og-card.html to change the card. Falls back to keeping the
+# existing og.png if no Chrome is available (rather than overwriting it).
+OG_HTML="scripts/og-card.html"
+CHROME=""
+for cand in \
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary" \
+  "/Applications/Chromium.app/Contents/MacOS/Chromium" \
+  "$(command -v chromium 2>/dev/null || true)" \
+  "$(command -v google-chrome 2>/dev/null || true)"; do
+  if [ -n "$cand" ] && [ -x "$cand" ]; then CHROME="$cand"; break; fi
+done
+
+PYTHON="$(command -v python3 2>/dev/null || true)"
+if [ -n "$CHROME" ] && [ -f "$OG_HTML" ] && [ -n "$PYTHON" ]; then
+  OG_PORT="$("$PYTHON" - <<'PY'
+import socket
+s = socket.socket()
+s.bind(('127.0.0.1', 0))
+print(s.getsockname()[1])
+s.close()
+PY
+)"
+  "$PYTHON" -m http.server "$OG_PORT" --bind 127.0.0.1 --directory . >/dev/null 2>&1 &
+  OG_SRV=$!
+  sleep 1
+  "$CHROME" --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=2 \
+    --window-size=1200,630 --screenshot="$TMP/og@2x.png" \
+    "http://127.0.0.1:$OG_PORT/$OG_HTML" >/dev/null 2>&1 || true
+  kill "$OG_SRV" >/dev/null 2>&1 || true
+  wait "$OG_SRV" >/dev/null 2>&1 || true
+  if [ -s "$TMP/og@2x.png" ] && command -v magick >/dev/null 2>&1; then
+    if magick "$TMP/og@2x.png" -resize 1200x630 -background "#0F1115" -alpha remove -alpha off -strip "$TMP/og.png" 2>/dev/null; then
+      cwebp -quiet -q 88 "$TMP/og.png" -o "$TMP/og.webp"
+      mv "$TMP/og.png" "$IMG/og.png"
+      mv "$TMP/og.webp" "$IMG/og.webp"
+      echo "  -> og.png + og.webp (rendered with Space Grotesk)"
+    else
+      echo "  (og render failed — kept existing $IMG/og.png)"
+    fi
+  else
+    echo "  (og render failed — kept existing $IMG/og.png)"
+  fi
+else
+  echo "  (headless Chrome, python3, or $OG_HTML missing — kept existing $IMG/og.png)"
+fi
 
 echo "Done. Outputs:"; ls -lh "$IMG" "$FAV"

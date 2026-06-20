@@ -1,0 +1,40 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<!--
+  Open Graph / social share card for cliftonhatfield.com (1200x630).
+  Source of truth for assets/img/og.png — rendered by scripts/optimize-images.sh
+  via headless Chrome (so the brand font, Space Grotesk, is used). Edit here, then
+  re-run scripts/optimize-images.sh to regenerate og.png + og.webp.
+-->
+<style>
+@font-face{font-family:"Space Grotesk";src:url("/assets/fonts/space-grotesk-700.woff2") format("woff2");font-weight:700;font-display:block}
+@font-face{font-family:"Space Grotesk";src:url("/assets/fonts/space-grotesk-500.woff2") format("woff2");font-weight:500;font-display:block}
+@font-face{font-family:"Inter";src:url("/assets/fonts/inter-400.woff2") format("woff2");font-weight:400;font-display:block}
+@font-face{font-family:"Inter";src:url("/assets/fonts/inter-600.woff2") format("woff2");font-weight:600;font-display:block}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1200px;height:630px;overflow:hidden}
+/* Tokens mirror index.html :root (dark theme). */
+.card{width:1200px;height:630px;background:#0F1115;position:relative;font-family:"Inter",sans-serif}
+.card::before{content:"";position:absolute;inset:0;
+  background-image:linear-gradient(#343b4a 1px,transparent 1px),linear-gradient(90deg,#343b4a 1px,transparent 1px);
+  background-size:48px 48px;opacity:.10;
+  -webkit-mask-image:radial-gradient(120% 90% at 24% 24%,#000 0%,transparent 70%)}
+.glow{position:absolute;width:620px;height:620px;left:-120px;top:-160px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,77,77,.18),transparent 62%);filter:blur(8px)}
+.panel{position:absolute;inset:56px;border:1px solid #2a2f38;border-radius:28px;background:#15171c;
+  display:flex;align-items:center;gap:64px;padding:0 72px}
+.photo{width:360px;height:360px;border-radius:50%;object-fit:cover;flex:none;
+  border:3px solid rgba(255,255,255,.10);box-shadow:0 24px 60px rgba(0,0,0,.5),0 0 0 10px rgba(255,77,77,.06)}
+.right{display:flex;flex-direction:column}
+.name{font-family:"Space Grotesk",sans-serif;font-weight:700;color:#fff;font-size:92px;line-height:1.0;letter-spacing:-.02em}
+.bar{width:128px;height:8px;background:#ff4d4d;border-radius:4px;margin:26px 0 28px}
+.domain{font-family:"Inter",sans-serif;font-weight:400;color:#aeb4bf;font-size:30px;letter-spacing:.01em}
+</style></head>
+<body><div class="card"><div class="glow"></div>
+<div class="panel">
+  <img class="photo" src="/assets/img/clifton.webp" alt="">
+  <div class="right">
+    <div class="name">Clifton<br>Hatfield</div>
+    <div class="bar"></div>
+    <div class="domain">cliftonhatfield.com</div>
+  </div>
+</div></div></body></html>
