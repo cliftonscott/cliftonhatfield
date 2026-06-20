@@ -32,7 +32,7 @@
       } catch (err) {
         window.scrollTo(0, 0); // very old browsers: no options object
       }
-      if (window.history && history.replaceState) {
+      if (window.history && history.replaceState && location.hash === "#top") {
         history.replaceState(null, "", location.pathname + location.search);
       }
     });
