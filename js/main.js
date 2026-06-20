@@ -17,6 +17,27 @@
     window.addEventListener("scroll", onScroll, { passive: true });
   }
 
+  /* ── Back-to-top / brand: always scroll to top ───────────────────── */
+  // The #top fragment links work without JS (first tap), but iOS Safari
+  // treats a second tap — when location.hash is already "#top" — as a no-op
+  // and won't re-scroll. Drive the scroll ourselves so every tap works, then
+  // strip the fragment so the URL never gets "stuck" at #top.
+  var topLinks = document.querySelectorAll('a[href="#top"]');
+  for (var ti = 0; ti < topLinks.length; ti++) {
+    topLinks[ti].addEventListener("click", function (e) {
+      e.preventDefault();
+      var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: reduce ? "auto" : "smooth" });
+      } catch (err) {
+        window.scrollTo(0, 0); // very old browsers: no options object
+      }
+      if (window.history && history.replaceState && location.hash === "#top") {
+        history.replaceState(null, "", location.pathname + location.search);
+      }
+    });
+  }
+
   /* ── Theme toggle ────────────────────────────────────────────────── */
   // The pre-paint script in <head> has already set data-theme (saved choice →
   // OS preference → dark). Here we wire the header button, persist the user's
